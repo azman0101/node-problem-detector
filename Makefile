@@ -14,12 +14,14 @@
 
 # Build the node-problem-detector image.
 
-.PHONY: all build-container build-tar build push-container push-tar push \
+.PHONY: all build-container build-tar build push-container push \
         clean vet fmt version \
         Dockerfile build-binaries docker-builder build-in-docker
 
 all: build
 
+DOCKER_USERNAME=${DOCKER_USERNAME}
+DOCKER_PASSWORD=${DOCKER_PASSWORD}
 # VERSION is the version of the binary.
 VERSION?=$(shell if [ -d .git ]; then echo `git describe --tags --dirty`; else echo "UNKNOWN"; fi)
 
@@ -27,7 +29,7 @@ VERSION?=$(shell if [ -d .git ]; then echo `git describe --tags --dirty`; else e
 TAG?=$(VERSION)
 
 # REGISTRY is the container registry to push into.
-REGISTRY?=staging-k8s.gcr.io
+REGISTRY?=azman0101
 
 # UPLOAD_PATH is the cloud storage path to upload release tar.
 UPLOAD_PATH?=gs://kubernetes-release
@@ -57,7 +59,7 @@ ENABLE_JOURNALD?=1
 # The debian-base:v1.0.0 image built from kubernetes repository is based on
 # Debian Stretch. It includes systemd 232 with support for both +XZ and +LZ4
 # compression. +LZ4 is needed on some os distros such as COS.
-BASEIMAGE:=k8s.gcr.io/debian-base-amd64:v1.0.0
+BASEIMAGE:=ubuntu:18.04
 
 # Disable cgo by default to make the binary statically linked.
 CGO_ENABLED:=0
@@ -132,27 +134,27 @@ endif
 test: vet fmt
 	GO111MODULE=on go test -mod vendor -timeout=1m -v -race -short -tags "$(BUILD_TAGS)" ./...
 
-e2e-test: vet fmt build-tar
-	GO111MODULE=on ginkgo -nodes=$(PARALLEL) -mod vendor -timeout=10m -v -tags "$(BUILD_TAGS)" -stream \
-	./test/e2e/metriconly/... -- \
-	-project=$(PROJECT) -zone=$(ZONE) \
-	-image=$(VM_IMAGE) -image-family=$(IMAGE_FAMILY) -image-project=$(IMAGE_PROJECT) \
-	-ssh-user=$(SSH_USER) -ssh-key=$(SSH_KEY) \
-	-npd-build-tar=`pwd`/$(TARBALL) \
-	-boskos-project-type=$(BOSKOS_PROJECT_TYPE) -job-name=$(JOB_NAME) \
-	-artifacts-dir=$(ARTIFACTS)
+# e2e-test: vet fmt build-tar
+# 	GO111MODULE=on ginkgo -nodes=$(PARALLEL) -mod vendor -timeout=10m -v -tags "$(BUILD_TAGS)" -stream \
+# 	./test/e2e/metriconly/... -- \
+# 	-project=$(PROJECT) -zone=$(ZONE) \
+# 	-image=$(VM_IMAGE) -image-family=$(IMAGE_FAMILY) -image-project=$(IMAGE_PROJECT) \
+# 	-ssh-user=$(SSH_USER) -ssh-key=$(SSH_KEY) \
+# 	-npd-build-tar=`pwd`/$(TARBALL) \
+# 	-boskos-project-type=$(BOSKOS_PROJECT_TYPE) -job-name=$(JOB_NAME) \
+# 	-artifacts-dir=$(ARTIFACTS)
 
 build-binaries: ./bin/node-problem-detector ./bin/log-counter ./bin/health-checker
 
 build-container: build-binaries Dockerfile
 	docker build -t $(IMAGE) .
 
-build-tar: ./bin/node-problem-detector ./bin/log-counter ./bin/health-checker ./test/bin/problem-maker
-	tar -zcvf $(TARBALL) bin/ config/ test/e2e-install.sh test/bin/problem-maker
-	sha1sum $(TARBALL)
-	md5sum $(TARBALL)
+# build-tar: ./bin/node-problem-detector ./bin/log-counter ./bin/health-checker ./test/bin/problem-maker
+# 	tar -zcvf $(TARBALL) bin/ config/ test/e2e-install.sh test/bin/problem-maker
+# 	sha1sum $(TARBALL)
+# 	md5sum $(TARBALL)
 
-build: build-container build-tar
+build: build-container
 
 docker-builder:
 	docker build -t npd-builder ./builder
@@ -163,11 +165,11 @@ build-in-docker: clean docker-builder
 		-c 'cd /gopath/src/k8s.io/node-problem-detector/ && make build-binaries'
 
 push-container: build-container
-	gcloud auth configure-docker
+	echo $(DOCKER_PASSWORD) | docker login -u $(DOCKER_USERNAME) --password-stdin
 	docker push $(IMAGE)
 
-push-tar: build-tar
-	gsutil cp $(TARBALL) $(UPLOAD_PATH)/node-problem-detector/
+# push-tar: build-tar
+# 	gsutil cp $(TARBALL) $(UPLOAD_PATH)/node-problem-detector/
 
 push: push-container push-tar
 
