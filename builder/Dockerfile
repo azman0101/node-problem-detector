@@ -1,4 +1,4 @@
-# Copyright 2018 The Kubernetes Authors. All rights reserved
+# Copyright 2016 The Kubernetes Authors All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.11.0
-LABEL maintainer="Andy Xie <andy.xning@gmail.com>"
+FROM k8s.gcr.io/debian-base-amd64:v1.0.0
+MAINTAINER Random Liu <lantaol@google.com>
 
-ENV GOPATH /gopath/
-ENV PATH $GOPATH/bin:$PATH
+RUN clean-install util-linux libsystemd0 bash
 
-RUN apt-get update && apt-get --yes install libsystemd-dev
-RUN go version
-RUN go get github.com/tools/godep
-RUN godep version
-CMD ["/bin/bash"]
+# Avoid symlink of /etc/localtime.
+RUN test -h /etc/localtime && rm -f /etc/localtime && cp /usr/share/zoneinfo/UTC /etc/localtime || true
+
+ADD ./bin/node-problem-detector /node-problem-detector
+ADD ./bin/health-checker /home/kubernetes/bin/health-checker
+
+# Below command depends on ENABLE_JOURNAL=1.
+ADD ./bin/log-counter /home/kubernetes/bin/log-counter
+
+ADD config /config
+ENTRYPOINT ["/node-problem-detector", "--system-log-monitors=/config/kernel-monitor.json"]

@@ -27,7 +27,7 @@ VERSION?=$(shell if [ -d .git ]; then echo `git describe --tags --dirty`; else e
 TAG?=$(VERSION)
 
 # REGISTRY is the container registry to push into.
-REGISTRY?=staging-k8s.gcr.io
+REGISTRY?=azman0101
 
 # UPLOAD_PATH is the cloud storage path to upload release tar.
 UPLOAD_PATH?=gs://kubernetes-release
@@ -57,7 +57,7 @@ ENABLE_JOURNALD?=1
 # The debian-base:v1.0.0 image built from kubernetes repository is based on
 # Debian Stretch. It includes systemd 232 with support for both +XZ and +LZ4
 # compression. +LZ4 is needed on some os distros such as COS.
-BASEIMAGE:=k8s.gcr.io/debian-base-amd64:v1.0.0
+BASEIMAGE:=ubuntu:18.04
 
 # Disable cgo by default to make the binary statically linked.
 CGO_ENABLED:=0
@@ -163,7 +163,6 @@ build-in-docker: clean docker-builder
 		-c 'cd /gopath/src/k8s.io/node-problem-detector/ && make build-binaries'
 
 push-container: build-container
-	gcloud auth configure-docker
 	docker push $(IMAGE)
 
 push-tar: build-tar
