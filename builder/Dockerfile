@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM k8s.gcr.io/debian-base-amd64:v1.0.0
+FROM ubuntu:18.04
 MAINTAINER Random Liu <lantaol@google.com>
 
-RUN clean-install util-linux libsystemd0 bash
-
+#RUN clean-install util-linux libsystemd0 bash
+RUN apt update && apt install -qqy util-linux libsystemd0 bash iptables libcap2 libcryptsetup12 libidn11
 # Avoid symlink of /etc/localtime.
 RUN test -h /etc/localtime && rm -f /etc/localtime && cp /usr/share/zoneinfo/UTC /etc/localtime || true
 
